@@ -1,0 +1,6 @@
+main: me.yousou.Crates.Core
+name: Crates
+version: 1.0
+api-version: 1.18
+commands:
+ cratepuppet:
