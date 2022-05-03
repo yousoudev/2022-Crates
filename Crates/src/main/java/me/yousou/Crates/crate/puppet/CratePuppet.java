@@ -13,6 +13,7 @@ import org.bukkit.block.data.Directional;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Item;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPickupItemEvent;
@@ -22,16 +23,17 @@ import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
 
 import me.yousou.Crates.Core;
+import me.yousou.Crates.crate.CrateManager;
 import me.yousou.Crates.hologram.Hologram;
 
 public class CratePuppet implements Listener{
 
 	private ArmorStand as;
-	private Hologram h;
 	private boolean active = false;
 	private ItemStack item = null;
+	private CrateManager cm;
 	
-	public CratePuppet(Location loc) {
+	public CratePuppet(Location loc, CrateManager cm) {
 		Bukkit.getPluginManager().registerEvents(this, Core.getPlugin(Core.class));
 		as = (ArmorStand)loc.getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
 		
@@ -45,7 +47,7 @@ public class CratePuppet implements Listener{
 		
 		as.setLeftArmPose(new EulerAngle(0, 0, 0));
 		as.setRightArmPose(new EulerAngle(-0.5, -0.5, 0));
-		
+		this.cm = cm;
 	}
 	
 	public void destroy() {
@@ -53,7 +55,7 @@ public class CratePuppet implements Listener{
 		as.remove();
 	}
 	
-	public void animate() {
+	public void animate(Player p) {
 		if(!active) {
 			active = true;
 			new BukkitRunnable() {
@@ -75,49 +77,69 @@ public class CratePuppet implements Listener{
 					}
 					if(state==30) {
 						this.cancel();
-						reward();
+						reward(p);
 					}
 				}
 			}.runTaskTimer(Core.getPlugin(Core.class), 2L, 2L);
 		}
 	}
 	
-	private void reward() {
+	private void reward(Player p) {
 		active = false;
 		as.setLeftArmPose(new EulerAngle(0, 0, 0));
 		as.setRightArmPose(new EulerAngle(-0.5, -0.5, 0));
-		as.setHeadPose(new EulerAngle(0, 0, 0));
-		//double pitch = 0.8-0/0.8*(state-20);
 	    Block b = as.getLocation().getBlock().getRelative(as.getFacing());
 	    b.getWorld().playSound(b.getLocation(), Sound.BLOCK_STONE_PLACE, 1F, 1F);
 		b.setType(Material.CHEST);
+		as.getEquipment().setItemInMainHand(new ItemStack(Material.AIR));
 		Chest c = (Chest)b.getState();
-		b.getWorld().spawnParticle(Particle.NAUTILUS, c.getLocation(), 100, 0, 1, 0);
+		Location loc = new Location(c.getWorld(), c.getX()+.5, c.getY(), c.getZ()+.5);
+		b.getWorld().spawnParticle(Particle.NAUTILUS, loc, 100, 0, 1, 0);
 		BlockData chest = b.getBlockData();
 		 if (chest instanceof Directional) {
 		        ((Directional) chest).setFacing(as.getFacing());
 		        b.setBlockData(chest);
 		    }
 		 
+		 CrateReward cr = cm.getRandom();
 		 new BukkitRunnable() {
 			 int state = 0;
+			 Hologram h;
 			 Item ifs;
 			 public void run() {
 				 state++;
 				 if(state==18) {
-					 b.getWorld().spawnParticle(Particle.EXPLOSION_NORMAL, c.getLocation(), 100, 0, 1, 0);
+					 b.getWorld().spawnParticle(Particle.EXPLOSION_NORMAL, loc, 100, 0, 1, 0);
 				 }
 				 if(state==20) {
 					 c.open();
-					 ItemStack ite = new ItemStack(Material.DIAMOND_SWORD);
+					 ItemStack ite = new ItemStack(cr.getItem());
 					 item = ite;
-					 ifs = c.getWorld().dropItem(new Location(c.getWorld(), c.getX(), c.getY()+1, c.getZ()), ite);
+					 ifs = c.getWorld().dropItem(new Location(c.getWorld(), c.getX()+.5, c.getY()+1, c.getZ()+.5), ite);
 					 ifs.setVelocity(new Vector(0,-1,0));
-					 Core.getPlugin(Core.class).hm.create("§21x §aDiamond Sword", new Location(c.getWorld(), c.getX(), c.getY()+1.5, c.getZ()));
-				 }else if(state==60) {
-				 this.cancel();
+					 h= Core.getPlugin(Core.class).hm.create(cr.getText(), new Location(c.getWorld(), c.getX()+.5, c.getY()-0.7, c.getZ()+.5));
+					 p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1F, 1F);
+				 }
+				 if(state>21&&state<31) {
+					 double pitch = 0.8-0.08*(state-21);
+					 as.setHeadPose(new EulerAngle(pitch, 0, 0));
+				 }
+				 if(state==80) {
+				 c.close();
 				 ifs.remove();
 				 item = null;
+				 Core.getPlugin(Core.class).hm.destroy(h);
+				 for(String cmd : cr.getCommands()) {
+					 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd.replace("{player}", p.getName()));
+				 }
+				 }
+				 if(state==100) {
+					 this.cancel();
+					 b.getWorld().spawnParticle(Particle.FLASH, loc, 100, 0, 1, 0);
+					 p.playSound(p.getLocation(), Sound.BLOCK_CHAIN_BREAK, 1F, 1F);
+					 b.setType(Material.AIR);
+					 active=false;
+					 as.getEquipment().setItemInMainHand(new ItemStack(Material.CHEST));
 				 }
 			 }
 		 }.runTaskTimer(Core.getPlugin(Core.class), 2L, 2L);

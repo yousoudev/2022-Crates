@@ -23,7 +23,16 @@ public class HologramManager {
 		}
 	}
 	
-	public void create(String text, Location loc) {
-		holograms.add(new Hologram(text, loc));
+	public Hologram create(String text, Location loc) {
+		Hologram h = new Hologram(text, loc);
+		holograms.add(h);
+		return h;
+	}
+	
+	public void destroy(Hologram h) {
+		if(holograms.contains(h)) {
+			h.destroy();
+			holograms.remove(h);
+		}
 	}
 }

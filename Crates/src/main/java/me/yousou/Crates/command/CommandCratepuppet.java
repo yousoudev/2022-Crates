@@ -14,10 +14,10 @@ public class CommandCratepuppet implements CommandExecutor{
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 		if(sender instanceof Player) {
 			if(args.length==1) {
-				Core.getPlugin(Core.class).test.animate();
+				Core.getPlugin(Core.class).test.animate((Player)sender);
 			}else {
 			Player p = (Player)sender;
-			Core.getPlugin(Core.class).test = new CratePuppet(p.getLocation());
+			Core.getPlugin(Core.class).test = new CratePuppet(p.getLocation(), Core.getPlugin(Core.class).cm);
 			p.sendMessage("Created crate puppet");
 		}
 		}
